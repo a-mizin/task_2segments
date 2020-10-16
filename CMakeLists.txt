@@ -4,13 +4,36 @@ project(Segments)
 set(CMAKE_CXX_STANDARD 17)
 
 #
+# Vector3D library
+#
+add_library(vectorlib
+        scr/vectorLib/Vector3D.cpp
+        scr/vectorLib/Vector3D.h)
+
+set_target_properties(vectorlib PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED YES
+        CXX_EXTENSIONS NO)
+
+#
+# Segment3D library
+#
+add_library(segmentlib
+        scr/segmentLib/Segment3D.cpp
+        scr/segmentLib/Segment3D.h)
+
+set_target_properties(segmentlib PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED YES
+        CXX_EXTENSIONS NO)
+
+#
 # geometry library
 #
-add_library(geomlib
-        scr/geomlib/geometry.cpp
-        scr/geomlib/geometry.h)
+add_library(geometrylib
+        scr/geometryLib/geometry.cpp)
 
-set_target_properties(geomlib PROPERTIES
+set_target_properties(geometrylib PROPERTIES
         CXX_STANDARD 17
         CXX_STANDARD_REQUIRED YES
         CXX_EXTENSIONS NO)
@@ -25,8 +48,8 @@ set_target_properties(segments PROPERTIES
         CXX_STANDARD_REQUIRED YES
         CXX_EXTENSIONS NO)
 
-add_dependencies(segments geomlib)
-target_link_libraries(segments geomlib)
+add_dependencies(segments geometrylib segmentlib vectorlib)
+target_link_libraries(segments geometrylib segmentlib vectorlib)
 
 #
 # unit tests
@@ -69,5 +92,5 @@ target_include_directories(geometry_unittests PRIVATE
         "${CMAKE_CURRENT_BINARY_DIR}/googletest-src"
         "${CMAKE_CURRENT_BINARY_DIR}/googletest-src/include")
 
-add_dependencies(geometry_unittests geomlib)
-target_link_libraries(geometry_unittests geomlib gtest_main)
+add_dependencies(geometry_unittests geometrylib segmentlib vectorlib)
+target_link_libraries(geometry_unittests geometrylib segmentlib vectorlib gtest_main)

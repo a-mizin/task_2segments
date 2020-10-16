@@ -1,7 +1,7 @@
 #include <string>
 
 #include "gtest/gtest.h"
-#include "../geomlib/geometry.h"
+#include "../geometryLib/geometry.cpp"
 
 //      compDeterminant3D
 

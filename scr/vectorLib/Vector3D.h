@@ -1,3 +1,5 @@
+#pragma once
+
 #include <tuple>
 
 class Vector3D {
@@ -39,35 +41,3 @@ private:
     double y_;
     double z_;
 };
-
-Vector3D operator*(double scalar, Vector3D vector);
-
-class Segment3D {
-    friend Vector3D
-    intersect(const Segment3D& s1, const Segment3D& s2);
-
-public:
-    Segment3D(const Vector3D& start, const Vector3D& end);
-
-    Vector3D
-    pointFromLine(double u) const;
-
-private:
-    Vector3D start_;
-    Vector3D end_;
-};
-
-double
-compDeterminant3D(const Vector3D& vector1, const Vector3D& vector2,
-                  const Vector3D& vector3);
-
-std::tuple<double, double>
-solveLinearSystem2D(const Vector3D& vector1, const Vector3D& vector2,
-                    const Vector3D& vector3);
-
-double
-convexCombinationCoefficient(const Vector3D& vector1, const Vector3D& vector2,
-                             const Vector3D& vector3);
-
-Vector3D
-intersect(const Segment3D& s1, const Segment3D& s2);
