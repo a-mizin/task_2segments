@@ -4,7 +4,7 @@
 
 class Segment3D {
     friend Vector3D
-    intersect(const Segment3D& s1, const Segment3D& s2);
+    intersect(const Segment3D& segment1, const Segment3D& segment2);
 
 public:
     Segment3D(const Vector3D& start, const Vector3D& end);
