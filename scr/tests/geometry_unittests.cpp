@@ -88,18 +88,139 @@ TEST(intersect, random_segments_1)
 
 TEST(intersect, random_segments_2)
 {
-    Segment3D segment1(Vector3D(0, 0, 0), Vector3D(0, 1, 0));
-    Segment3D segment2(Vector3D(1, 0, 0), Vector3D(0, 0, 0));
+    Segment3D segment1(Vector3D(3, 3, 3), Vector3D(-3, -3, -3));
+    Segment3D segment2(Vector3D(-3, 3, -3), Vector3D(3, -3, 3));
 
     EXPECT_EQ(Vector3D(0, 0, 0),
               intersect(segment1, segment2));
 }
 
-TEST(intersect, random_segments_3)
+TEST(intersect, perpendicular_angle)
 {
-    Segment3D segment1(Vector3D(1, 1, 1), Vector3D(2, 2, 2));
-    Segment3D segment2(Vector3D(2, 2, 2), Vector3D(3, 3, 3));
+    Segment3D segment1(Vector3D(0, 0, 0), Vector3D(1, 0, 0));
+    Segment3D segment2(Vector3D(0, 1, 0), Vector3D(0, 0, 0));
+
+    EXPECT_EQ(Vector3D(0, 0, 0),
+              intersect(segment1, segment2));
+}
+
+TEST(intersect, not_coplanar_vectors)
+{
+    Segment3D segment1(Vector3D(0, 0, 0), Vector3D(3, 0, 0));
+    Segment3D segment2(Vector3D(0, 0, 3), Vector3D(0, 1, 3));
+
+    std::string what("Do not intersect.");
+    try{
+        intersect(segment1, segment2);
+    }
+    catch(std::exception& exception) {
+        EXPECT_EQ(std::strcmp(exception.what(), what.c_str()), 0);
+    }
+}
+
+TEST(intersect, do_not_intersect)
+{
+    Segment3D segment1(Vector3D(1, 1, 0), Vector3D(3, 3, 0));
+    Segment3D segment2(Vector3D(1.5, 1.5, 1.5), Vector3D(2, 0, 0));
+
+    std::string what("Do not intersect.");
+    try{
+        intersect(segment1, segment2);
+    }
+    catch(std::exception& exception) {
+        EXPECT_EQ(std::strcmp(exception.what(), what.c_str()), 0);
+    }
+}
+
+TEST(intersect, point_and_segment_intersect)
+{
+    Segment3D segment1(Vector3D(0, 0, 0), Vector3D(3, 3, 3));
+    Segment3D segment2(Vector3D(2, 2, 2), Vector3D(2, 2, 2));
 
     EXPECT_EQ(Vector3D(2, 2, 2),
               intersect(segment1, segment2));
+}
+
+TEST(intersect, point_and_point_intersect)
+{
+    Segment3D segment1(Vector3D(0, 0, 0), Vector3D(0, 0, 0));
+
+    EXPECT_EQ(Vector3D(0, 0, 0),
+              intersect(segment1, segment1));
+}
+
+TEST(intersect, point_and_segment_do_not_intersect)
+{
+    Segment3D segment1(Vector3D(0, 0, 0), Vector3D(3, 3, 3));
+    Segment3D segment2(Vector3D(3.1, 3.1, 3.1), Vector3D(3.1, 3.1, 3.1));
+
+    std::string what("Do not intersect.");
+    try{
+        intersect(segment1, segment2);
+    }
+    catch(std::exception& exception) {
+        EXPECT_EQ(std::strcmp(exception.what(), what.c_str()), 0);
+    }
+}
+
+TEST(intersect, point_and_point_do_not_intersect)
+{
+    Segment3D segment1(Vector3D(3, 3, 3), Vector3D(3, 3, 3));
+    Segment3D segment2(Vector3D(3.1, 3.1, 3.1), Vector3D(3.1, 3.1, 3.1));
+
+    std::string what("Do not intersect.");
+    try{
+        intersect(segment1, segment2);
+    }
+    catch(std::exception& exception) {
+        std::cerr << exception.what();
+        EXPECT_EQ(std::strcmp(exception.what(), what.c_str()), 0);
+    }
+}
+
+TEST(intersect, paralel_segments)
+{
+    Segment3D segment1(Vector3D(0, 0, 0), Vector3D(3, 3, 3));
+    Segment3D segment2(Vector3D(2, 2, 2), Vector3D(2, 2, 2));
+
+    std::string what("Do not intersect.");
+    try{
+        intersect(segment1, segment2);
+    }
+    catch(std::exception& exception) {
+        EXPECT_EQ(std::strcmp(exception.what(), what.c_str()), 0);
+    }
+}
+
+TEST(intersect, continuing)
+{
+    Segment3D segment1(Vector3D(0, 0, 0), Vector3D(3, 3, 3));
+    Segment3D segment2(Vector3D(3, 3, 3), Vector3D(10, 10, 10));
+
+    EXPECT_EQ(Vector3D(3, 3, 3),
+              intersect(segment1, segment2));
+}
+
+TEST(intersect, gap)
+{
+    Segment3D segment1(Vector3D(0, 0, 0), Vector3D(3, 3, 3));
+    Segment3D segment2(Vector3D(3.1, 3.1, 3.1), Vector3D(5, 5, 5));
+
+    std::string what("Do not intersect.");
+    try{
+        intersect(segment1, segment2);
+    }
+    catch(std::exception& exception) {
+        EXPECT_EQ(std::strcmp(exception.what(), what.c_str()), 0);
+    }
+}
+
+TEST(intersect, contains)
+{
+    Segment3D segment1(Vector3D(0, 0, 0), Vector3D(3, 3, 3));
+    Segment3D segment2(Vector3D(1, 1, 1), Vector3D(2, 2, 2));
+
+    Vector3D answer = intersect(segment1, segment2);
+    EXPECT_EQ((answer == Vector3D(1, 1, 1)) || (answer == Vector3D(2, 2, 2)),
+              true);
 }

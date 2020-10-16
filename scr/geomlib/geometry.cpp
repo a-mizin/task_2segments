@@ -30,8 +30,14 @@ bool Vector3D::operator!=(const Vector3D &lhs) const {
     return std::tie(x_, y_, z_) != std::tie(lhs.x_, lhs.y_, lhs.z_);
 }
 
-Segment3D::Segment3D(const Vector3D start, const Vector3D end) :
+Segment3D::Segment3D(const Vector3D& start, const Vector3D& end) :
     start_(start), end_(end) {}
+
+Vector3D
+Segment3D::pointFromLine(double u) const {
+    return start_.scalarMultiplication(u) +
+           end_.scalarMultiplication(1. - u);
+}
 
 double compDeterminant3D(const Vector3D& v1, const Vector3D& v2,
                          const Vector3D& v3)
@@ -45,45 +51,104 @@ double compDeterminant3D(const Vector3D& v1, const Vector3D& v2,
 }
 
 std::tuple<double, double>
-        solveLinearSystem2D(Vector3D vec1, Vector3D vec2, Vector3D a)
+solveLinearSystem2D(const Vector3D& v1, const Vector3D& v2,
+                    const Vector3D& a)
 {
     double u, v;
-    if (double det = vec1.x_ * vec2.y_ - vec1.y_ * vec2.x_; det == 0) {
+    if (double det = v1.x_ * v2.y_ - v1.y_ * v2.x_; det == 0) {
         throw std::exception("Infinite number of solutions.");
     } else {
-        u = (a.x_ * vec2.y_ - vec2.x_ * a.y_) / det;
-        v = (vec1.x_ * a.y_ - a.x_ * vec1.y_) / det;
+        u = (a.x_ * v2.y_ - v2.x_ * a.y_) / det;
+        v = (v1.x_ * a.y_ - a.x_ * v1.y_) / det;
     }
 
     return std::tie(u, v);
 }
 
-Vector3D intersect(const Segment3D &AB, const Segment3D &CD) {
-    Vector3D BA(AB.start_ - AB.end_);
-    Vector3D DC(CD.end_   - CD.start_); //rename
-    Vector3D BD(CD.end_   - AB.end_);
-    Vector3D AC(CD.start_ - AB.start_);
+double convexCombinationCoefficient(const Vector3D &v1, const Vector3D &v2,
+                                    const Vector3D &v3)
+{
+    // let v1 is vector OA, v2 is vector OB, v3 is vector OC
+    Vector3D BA(v1 - v2);
+    Vector3D BC(v3 - v2);
 
-    //Not coplanar segments do not intersect
-    if (compDeterminant3D(BA, DC, AC) != 0)
-        throw std::exception("Coplanar segments.");
+    double u;
+    bool isInitialized = false;
 
-    //solve system u*BA - v*DC = BD; u, v - scalar
-    double u, v;
-    try {
-        std::tie(u, v) = solveLinearSystem2D(BA, DC, BD);
-    }
-    catch (std::exception& exception) {
-        //throw std::exception("????");
-        if (std::max(AB.start_, AB.end_) != std::min(CD.start_, CD.end_))
-            throw std::exception("Do not intersect.");
-        else
-            return std::max(AB.start_, AB.end_);
+    if (BA.x_ != 0.) {
+        u = BC.x_ / BA.x_;
+        isInitialized = true;
     }
 
-    if (u < 0. || u > 1. || v < 0. || v > 1.)
+    if (BA.y_ != 0.) {
+        if (isInitialized && u != BC.y_ / BA.y_)
+                throw std::exception("The point is not on the segment.");
+
+        u = BC.y_ / BA.y_;
+        isInitialized = true;
+    }
+
+    if (BA.z_ != 0.) {
+        if (isInitialized && u != BC.z_ / BA.z_)
+            throw std::exception("The point is not on the segment.");
+        u = BC.z_ / BA.z_;
+        isInitialized = true;
+    }
+
+    if (isInitialized)
+        return u;
+    else
+        throw std::exception("There is a point, not a segment.");
+}
+
+Vector3D intersect(const Segment3D &s1, const Segment3D &s2) {
+    // let s1 is segment AB, s2 is segment CD
+    Vector3D BA(s1.start_ - s1.end_);
+    Vector3D CD(s2.end_   - s2.start_);
+    Vector3D BD(s2.end_   - s1.end_);
+    Vector3D AC(s2.start_ - s1.start_);
+
+    //Not coplanar vectors
+    if (compDeterminant3D(BA, CD, AC) != 0.) // две точки пересекаются и не пересекаются???
         throw std::exception("Do not intersect.");
 
-    return  AB.start_.scalarMultiplication(u) +
-            AB.end_.scalarMultiplication(1 - u);
+    //solve system u*BA - v*CD = BD; u, v - scalar
+    double u, v;
+    try {
+        std::tie(u, v) = solveLinearSystem2D(BA, CD, BD);
+
+        if (u < 0. || u > 1. || v < 0. || v > 1.)
+            throw std::exception("Do not intersect.");
+
+        return s1.pointFromLine(u);
+    }
+    catch (std::exception& exception) {
+        //Two segments - points
+        if (s1.start_ == s1.end_ && s2.start_ == s2.end_) {
+            if (s1.start_ == s2.start_)
+                return s1.start_;
+
+            throw std::exception("Do not intersect.");
+        }
+
+        const Segment3D& segment  = (s1.start_ == s1.end_) ? s2 : s1;
+        const Segment3D& pointOrSegment = (s1.start_ == s1.end_) ? s1 : s2;
+
+        //solve u * segment.start_ + (1 - u)segment.end_
+        //          = pointOrSegment.start_
+        //          u - scalar
+        u = convexCombinationCoefficient(
+                segment.start_, segment.end_, pointOrSegment.start_);
+        if (u < 0. && u > 1.)
+            //solve u * segment.start_ + (1 - u)segment.end_
+            //          = pointOrSegment.end_
+            //          u - scalar
+            u = convexCombinationCoefficient(
+                    segment.start_, segment.end_, pointOrSegment.end_);
+
+        if (0. <= u && u <= 1.)
+            return segment.pointFromLine(u);
+
+        throw std::exception("Do not intersect.");
+    }
 }
