@@ -1,118 +1,141 @@
-#include <exception>
-#include <algorithm>
+#include <stdexcept>
+#include <limits>
+#include <cmath>
+#include <vector>
+#include <tuple>
 
 #include "../segmentLib/Segment3D.h"
 
-double compDeterminant3D(const Vector3D& v1, const Vector3D& v2,
-                         const Vector3D& v3)
-{
-    return  v1.x_ * v2.y_ * v3.z_ +
-            v2.x_ * v3.y_ * v1.z_ +
-            v3.x_ * v1.y_ * v2.z_ -
-            v3.x_ * v2.y_ * v1.z_ -
-            v2.x_ * v1.y_ * v3.z_ -
-            v1.x_ * v3.y_ * v2.z_;
-}
-
-std::tuple<double, double>
-solveLinearSystem2D(const Vector3D& v1, const Vector3D& v2,
-                    const Vector3D& a)
-{
-    double u, v;
-    if (double det = v1.x_ * v2.y_ - v1.y_ * v2.x_; det == 0) {
-        throw std::exception("Infinite number of solutions.");
-    } else {
-        u = (a.x_ * v2.y_ - v2.x_ * a.y_) / det;
-        v = (v1.x_ * a.y_ - a.x_ * v1.y_) / det;
+namespace {
+    bool inUnitLine(const double point) {
+        return 0. <= point && point <= 1.;
     }
 
-    return std::tie(u, v);
-}
-
-double convexCombinationCoefficient(const Vector3D &v1, const Vector3D &v2,
-                                    const Vector3D &v3)
-{
-    // let v1 is vector OA, v2 is vector OB, v3 is vector OC
-    Vector3D BA(v1 - v2);
-    Vector3D BC(v3 - v2);
-
-    double u;
-    bool isInitialized = false;
-
-    if (BA.x_ != 0.) {
-        u = BC.x_ / BA.x_;
-        isInitialized = true;
+    bool isEqual(const double lhs, const double rhs,
+                 const double eps)
+    {
+        return std::fabs(lhs - rhs) < eps;
     }
 
-    if (BA.y_ != 0.) {
-        if (isInitialized && u != BC.y_ / BA.y_)
-                throw std::exception("The point is not on the segment.");
-
-        u = BC.y_ / BA.y_;
-        isInitialized = true;
+    bool isEqual(const Vector3D& lhs, const Vector3D& rhs,
+                 const double eps)
+    {
+        return  isEqual(lhs.x_, rhs.x_, eps) &&
+                isEqual(lhs.y_, rhs.y_, eps) &&
+                isEqual(lhs.z_, lhs.z_, eps);
     }
 
-    if (BA.z_ != 0.) {
-        if (isInitialized && u != BC.z_ / BA.z_)
-            throw std::exception("The point is not on the segment.");
-        u = BC.z_ / BA.z_;
-        isInitialized = true;
+    bool isEqual(const Segment3D& lhs, const Segment3D& rhs,
+                 const double eps)
+    {
+        return  isEqual(lhs.start_, rhs.start_, eps) &&
+                isEqual(lhs.end_  , rhs.end_  , eps);
     }
 
-    if (isInitialized)
-        return u;
-    else
-        throw std::exception("There is a point, not a segment.");
-}
-
-Vector3D intersect(const Segment3D &s1, const Segment3D &s2) {
-    // let s1 is segment AB, s2 is segment CD
-    Vector3D BA(s1.start_ - s1.end_);
-    Vector3D CD(s2.end_   - s2.start_);
-    Vector3D BD(s2.end_   - s1.end_);
-    Vector3D AC(s2.start_ - s1.start_);
-
-    //Not coplanar vectors
-    if (compDeterminant3D(BA, CD, AC) != 0.) // две точки пересекаются и не пересекаются???
-        throw std::exception("Do not intersect.");
-
-    //solve system u*BA - v*CD = BD; u, v - scalar
-    double u, v;
-    try {
-        std::tie(u, v) = solveLinearSystem2D(BA, CD, BD);
-
-        if (u < 0. || u > 1. || v < 0. || v > 1.)
-            throw std::exception("Do not intersect.");
-
-        return s1.pointFromLine(u);
+    bool isPoint(const Segment3D& segment,
+                 const double eps)
+    {
+        return isEqual(segment.start_, segment.end_, eps);
     }
-    catch (std::exception& exception) {
-        //Two segments - points
-        if (s1.start_ == s1.end_ && s2.start_ == s2.end_) {
-            if (s1.start_ == s2.start_)
-                return s1.start_;
 
-            throw std::exception("Do not intersect.");
+    double compDeterminant3D(const Vector3D& v1, const Vector3D& v2,
+                             const Vector3D& v3) {
+        return v1.x_ * v2.y_ * v3.z_ +
+               v2.x_ * v3.y_ * v1.z_ +
+               v3.x_ * v1.y_ * v2.z_ -
+               v3.x_ * v2.y_ * v1.z_ -
+               v2.x_ * v1.y_ * v3.z_ -
+               v1.x_ * v3.y_ * v2.z_;
+    }
+
+    std::pair<bool, double>
+    convexCombination(const Segment3D& s, const Vector3D& v,
+                      const double eps)
+    {
+        std::vector<double> coeff;
+
+        if (double factor = s.start_.x_ - s.end_.x_;
+            !isEqual(factor, 0, eps))
+        {
+            coeff.push_back( (v.x_ - s.end_.x_) / factor );
         }
 
-        const Segment3D& segment  = (s1.start_ == s1.end_) ? s2 : s1;
-        const Segment3D& pointOrSegment = (s1.start_ == s1.end_) ? s1 : s2;
+        if (double factor = s.start_.y_ - s.end_.y_;
+            !isEqual(factor, 0, eps))
+        {
+            coeff.push_back( (v.y_ - s.end_.y_) / factor );
+        }
 
-        //solve u * segment.start_ + (1 - u)segment.end_
-        //          = pointOrSegment.start_
-        //          u - scalar
-        u = convexCombinationCoefficient(
-                segment.start_, segment.end_, pointOrSegment.start_);
-        if (u < 0. && u > 1.)
-            //solve u * segment.start_ + (1 - u)segment.end_
-            //          = pointOrSegment.end_
-            //          u - scalar
-            u = convexCombinationCoefficient(
-                    segment.start_, segment.end_, pointOrSegment.end_);
+        if (double factor = s.start_.z_ - s.end_.z_;
+            !isEqual(factor, 0, eps))
+        {
+            coeff.push_back( (v.z_ - s.end_.z_) / factor );
+        }
 
-        if (0. <= u && u <= 1.)
-            return segment.pointFromLine(u);
-
-        throw std::exception("Do not intersect.");
+        switch (coeff.size()) {
+            case 0:
+                throw std::invalid_argument("");
+            case 1:
+                return std::make_pair(true, coeff[0]);
+            case 2:
+                if (coeff[0] == coeff[1])
+                    return std::make_pair(true, coeff[0]);
+                else
+                    return std::make_pair(false, -1);
+            case 3:
+                if (coeff[0] == coeff[1] && coeff[0] == coeff[2])
+                    return std::make_pair(true, coeff[0]);
+                else
+                    return std::make_pair(false, -1);
+        }
     }
+}
+
+Vector3D intersect(const Segment3D& segmentAB, const Segment3D& segmentCD,
+                   const double eps = std::numeric_limits<double>::epsilon()) {
+    // let s1 is segment AB, segmentCD is segment CD
+    Vector3D BA(segmentAB.start_ - segmentAB.end_   );
+    Vector3D CD(segmentCD.end_   - segmentCD.start_ );
+    Vector3D BD(segmentCD.end_   - segmentAB.end_   );
+    Vector3D AC(segmentCD.start_ - segmentAB.start_ );
+
+    //Not coplanar vectors
+    if (!isEqual(compDeterminant3D(BA, CD, AC), 0, eps))
+        throw std::invalid_argument("Do not intersect.");
+
+    //solve system u*BA - v*CD = BD; u, v - scalar
+    double det = BA.x_ * CD.y_ - BA.y_ * CD.x_;
+    if (!isEqual(det, 0, eps)) {
+        double u, v;
+        u = (BD.x_ * CD.y_  - CD.x_ * BD.y_) / det;
+        v = (BA.x_ * BD.y_  - BD.x_ * BA.y_) / det;
+
+        if (inUnitLine(u) && inUnitLine(v))
+            return segmentAB.pointFromLine(u);
+
+        throw std::invalid_argument("Do not intersect.");
+    }
+
+    // 1)       Two segments - points
+    if (isPoint(segmentAB, eps) && isPoint(segmentCD, eps)) {
+        if (isEqual(segmentAB, segmentCD, eps))
+            //point A from segment AB
+            return segmentAB.pointFromLine(0);
+
+        throw std::invalid_argument("Do not intersect.");
+    }
+
+    // 2)       One of the sections is definitely not a point
+    const Segment3D& segment        = segmentAB.isPoint() ? segmentCD : segmentAB;
+    const Segment3D& pointOrSegment = segmentAB.isPoint() ? segmentAB : segmentCD;
+
+    double u;
+    bool isCombination;
+    std::tie(isCombination, u) = convexCombination(segment, pointOrSegment.start_, eps);
+    if (!isCombination || !inUnitLine(u))
+         std::tie(isCombination, u)= convexCombination(segment, pointOrSegment.end_, eps);
+    if (!isCombination || !inUnitLine(u))
+        throw std::invalid_argument("Do not intersect.");
+
+    return segment.pointFromLine(u);
 }

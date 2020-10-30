@@ -2,17 +2,16 @@
 
 #include "../vectorLib/Vector3D.h"
 
-class Segment3D {
-    friend Vector3D
-    intersect(const Segment3D& segment1, const Segment3D& segment2);
-
-public:
+struct Segment3D {
     Segment3D(const Vector3D& start, const Vector3D& end);
 
-    Vector3D
-    pointFromLine(double u) const;
+    bool operator==(const Segment3D& rhs) const;
 
-private:
+    Vector3D pointFromLine(const double u) const;
+
+    bool isPoint() const;
+
+public:
     Vector3D start_;
     Vector3D end_;
 };

@@ -1,3 +1,4 @@
+#include <tuple>
 #include "Vector3D.h"
 
 Vector3D::Vector3D(const double x, const double y, const double z) :
